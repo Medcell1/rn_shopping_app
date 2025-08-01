@@ -1,69 +1,50 @@
 import { useState } from 'react';
 import { Modal, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
-import { supabase } from '../../../shared/utils/supabase';
+import { useAddProduct } from '../hooks/use-product';
 import { CustomButton } from '@/src/shared/components/custom-button';
 import { CustomInput } from '@/src/shared/components/custom-input';
 import { ErrorMessage } from '@/src/shared/components/error-message';
 
-const productSchema = z.object({
-  name: z.string().nonempty('Product name is required'),
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
-  image_url: z.string().url('Invalid URL').optional(),
-});
-
 interface AddProductFormProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: () => void;
 }
 
-export const AddProductForm = ({ visible, onClose, onAdd }: AddProductFormProps) => {
+export const AddProductForm = ({ visible, onClose }: AddProductFormProps) => {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', image_url: '' });
-  const [errors, setErrors] = useState<{ name?: string; price?: string; image_url?: string }>({});
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    price?: string;
+    image_url?: string;
+    general?: string;
+  }>({});
+  const { mutate: addProduct, isPending: adding } = useAddProduct();
 
-const handleAddProduct = async () => {
-  try {
-    productSchema.parse(newProduct);
-    setErrors({});
-    setError(null);
-    setAdding(true);
+  const handleAddProduct = () => {
+    setErrors({}); 
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert([{
-        name: newProduct.name.trim(),
-        price: parseFloat(newProduct.price),
-        image_url: newProduct.image_url ? newProduct.image_url.trim() : null,
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    setNewProduct({ name: '', price: '', image_url: '' });
-    onAdd();
-    onClose();
-  } catch (err) {
-if (err instanceof z.ZodError) {
-  const fieldErrors: { [key: string]: string } = {};
-  err.issues.forEach((issue) => {
-    const fieldName = issue.path[0];
-    if (typeof fieldName === 'string') {
-      fieldErrors[fieldName] = issue.message;
-    }
-  });
-  setErrors(fieldErrors);
-} else {
-  setError((err as any).message || 'Failed to add product');
-}
-
-  } finally {
-    setAdding(false);
-  }
-};
+    addProduct(newProduct, {
+      onSuccess: () => {
+        setNewProduct({ name: '', price: '', image_url: '' });
+        onClose();
+      },
+      onError: (error) => {
+        if (error instanceof z.ZodError) {
+          const fieldErrors: { [key: string]: string } = {};
+          error.issues.forEach((issue) => {
+            const fieldName = issue.path[0];
+            if (typeof fieldName === 'string') {
+              fieldErrors[fieldName] = issue.message;
+            }
+          });
+          setErrors(fieldErrors);
+        } else {
+          setErrors({ general: error.message });
+        }
+      },
+    });
+  };
 
 
   return (
@@ -79,7 +60,11 @@ if (err instanceof z.ZodError) {
           </TouchableOpacity>
         </View>
         <View className="p-4 flex-1">
-          {error && <ErrorMessage message={error} />}
+          {errors.general && (
+            <ErrorMessage
+              message={errors.general}
+            />
+          )}
           <CustomInput
             label="Product Name"
             placeholder="Enter product name"
@@ -87,6 +72,7 @@ if (err instanceof z.ZodError) {
             onChangeText={(text) => setNewProduct((prev) => ({ ...prev, name: text }))}
             error={errors.name}
             accessibilityLabel="Product name input"
+            editable={!adding}
           />
           <CustomInput
             label="Price"
@@ -96,6 +82,7 @@ if (err instanceof z.ZodError) {
             keyboardType="decimal-pad"
             error={errors.price}
             accessibilityLabel="Price input"
+            editable={!adding}
           />
           <CustomInput
             label="Image URL (Optional)"
@@ -105,6 +92,7 @@ if (err instanceof z.ZodError) {
             autoCapitalize="none"
             error={errors.image_url}
             accessibilityLabel="Image URL input"
+            editable={!adding}
           />
           <View className="mt-6">
             <CustomButton

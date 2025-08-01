@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FlatList, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useCartStore } from '../../cart/store/cart-store';
 import { LAYOUT } from '../../../constants/layout';
 import { CustomButton } from '@/src/shared/components/custom-button';
@@ -23,7 +22,7 @@ export default function ProductListScreen() {
   );
 
   if (isLoading) return <SkeletonLoader />;
-  if (error) return <ErrorMessage message={error.message} onRetry={refetch} />;
+  if (error) return <ErrorMessage message={error.message} onRetry={() => refetch()} />;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -61,9 +60,10 @@ export default function ProductListScreen() {
           removeClippedSubviews
           maxToRenderPerBatch={10}
           initialNumToRender={8}
+          windowSize={5} 
         />
       )}
-      <AddProductForm visible={showAddModal} onClose={() => setShowAddModal(false)} onAdd={refetch} />
+      <AddProductForm visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }
