@@ -1,20 +1,25 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCartStore } from '../store/cart-store';
 import { CustomButton } from '@/src/shared/components/custom-button';
 import { CartItem } from './cart-item';
-import { CartItemType } from '../types/cart';
+import { useCartStore } from '../store/cart-store';
+import type { CartItemType } from '../types/cart';
 
 export default function CartScreen() {
-  const { items, getTotal, getItemCount } = useCartStore();
+  const { items, getTotal, getItemCount } = useCartStore((state) => ({
+    items: state.items,
+    getTotal: state.getTotal,
+    getItemCount: state.getItemCount,
+  }));
   const router = useRouter();
 
-  const renderCartItem = useCallback(
-    ({ item }: { item: CartItemType }) => <CartItem item={item} />,
-    []
-  );
+  const renderCartItem = useCallback(({ item }: { item: CartItemType }) => (
+    <CartItem item={item} />
+  ), []);
+
+  const total = useMemo(() => getTotal().toFixed(2), [getTotal]);
 
   if (items.length === 0) {
     return (
@@ -45,7 +50,7 @@ export default function CartScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-surface p-4 border-t border-border">
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-xl font-bold text-text-primary">Total:</Text>
-          <Text className="text-xl font-bold text-primary">${getTotal().toFixed(2)}</Text>
+          <Text className="text-xl font-bold text-primary">${total}</Text>
         </View>
         <CustomButton
           title="Proceed to Checkout"

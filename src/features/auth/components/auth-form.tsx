@@ -1,15 +1,13 @@
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text } from 'react-native';
+import { z } from 'zod';
 import { CustomButton } from '@/src/shared/components/custom-button';
 import { CustomInput } from '@/src/shared/components/custom-input';
 import { ErrorMessage } from '@/src/shared/components/error-message';
-import { useState } from 'react';
-import { Text, View } from 'react-native';
-import { z } from 'zod';
 import { useAuth } from '../hooks/use-auth';
-
-
 const authSchema = z.object({
-  email: z.string().email('Invalid email').nonempty('Email is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters').nonempty('Password is required'),
+  email: z.string().email('Invalid email').min(1, 'Email is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters').min(1, 'Password is required'),
 });
 
 interface AuthFormProps {
@@ -18,46 +16,47 @@ interface AuthFormProps {
   onToggle: () => void;
 }
 
-export const AuthForm = ({ isSignUp, setLoading, onToggle }: AuthFormProps) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const AuthForm = React.memo(({ isSignUp, setLoading, onToggle }: AuthFormProps) => {
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { signIn, signUp, error } = useAuth();
 
-  const handleAuth = async () => {
+  const handleInputChange = useCallback((field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleAuth = useCallback(async () => {
     try {
-      authSchema.parse({ email, password });
+      authSchema.parse(formData);
       setErrors({});
       setLoading(true);
-      if (isSignUp) {
-        await signUp({ email, password });
-      } else {
-        await signIn({ email, password });
-      }
+      await (isSignUp ? signUp(formData) : signIn(formData));
     } catch (err) {
       if (err instanceof z.ZodError) {
-        const fieldErrors: { [key: string]: string } = {};
-        err.issues.forEach((e) => {
-          fieldErrors[e.message[0]] = e.message;
-        });
-        setErrors(fieldErrors);
+        setErrors(err.issues.reduce((acc, issue) => ({
+          ...acc,
+          [issue.path[0]]: issue.message,
+        }), {}));
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, isSignUp, signIn, signUp, setLoading]);
+
+  const buttonTitle = useMemo(() => isSignUp ? 'Create Account' : 'Sign In', [isSignUp]);
+  const toggleButtonTitle = useMemo(() => isSignUp ? 'Already have an account?' : "Don't have an account?", [isSignUp]);
 
   return (
     <View className="bg-surface rounded-lg p-6 border border-border">
       <Text className="text-2xl font-semibold text-center mb-6 text-text-primary">
-        {isSignUp ? 'Create Account' : 'Sign In'}
+        {buttonTitle}
       </Text>
       {error && <ErrorMessage message={error} />}
       <CustomInput
         label="Email"
         placeholder="Enter your email"
-        value={email}
-        onChangeText={setEmail}
+        value={formData.email}
+        onChangeText={(text) => handleInputChange('email', text)}
         keyboardType="email-address"
         autoCapitalize="none"
         error={errors.email}
@@ -66,24 +65,25 @@ export const AuthForm = ({ isSignUp, setLoading, onToggle }: AuthFormProps) => {
       <CustomInput
         label="Password"
         placeholder="Enter your password"
-        value={password}
-        onChangeText={setPassword}
+        value={formData.password}
+        onChangeText={(text) => handleInputChange('password', text)}
         secureTextEntry
         error={errors.password}
         accessibilityLabel="Password input"
       />
       <CustomButton
-        title={isSignUp ? 'Create Account' : 'Sign In'}
+        title={buttonTitle}
         onPress={handleAuth}
         className="mb-4 bg-black"
-        accessibilityLabel={isSignUp ? 'Create account button' : 'Sign in button'}
+        accessibilityLabel={`${buttonTitle} button`}
       />
       <CustomButton
-        title={isSignUp ? 'Already have an account?' : "Don't have an account?"}
+        title={toggleButtonTitle}
         onPress={onToggle}
         variant="outline"
         accessibilityLabel="Toggle auth mode button"
       />
     </View>
   );
-};
+});
+AuthForm.displayName = 'AuthForm';

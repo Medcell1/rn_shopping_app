@@ -1,5 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useCallback, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useCartStore } from '../../cart/store/cart-store';
 import { CustomButton } from '@/src/shared/components/custom-button';
 import { ErrorMessage } from '@/src/shared/components/error-message';
@@ -7,15 +8,20 @@ import { LoadingSpinner } from '@/src/shared/components/loading-spinner';
 import { useCheckout } from '../hooks/use-checkout';
 
 export default function CheckoutScreen() {
-  const { items, getTotal } = useCartStore();
+  const { items, getTotal } = useCartStore((state) => ({
+    items: state.items,
+    getTotal: state.getTotal,
+  }));
   const router = useRouter();
   const { checkout, isLoading, error } = useCheckout();
 
-  const handleCheckout = async () => {
+  const handleCheckout = useCallback(async () => {
     await checkout();
     router.dismissAll();
     router.replace('/(tabs)');
-  };
+  }, [checkout, router]);
+
+  const total = useMemo(() => getTotal().toFixed(2), [getTotal]);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -51,7 +57,7 @@ export default function CheckoutScreen() {
         <View className="bg-surface rounded-lg border border-border p-4 mb-6">
           <View className="flex-row justify-between items-center">
             <Text className="text-xl font-bold text-text-primary">Total:</Text>
-            <Text className="text-xl font-bold text-success">${getTotal().toFixed(2)}</Text>
+            <Text className="text-xl font-bold text-success">${total}</Text>
           </View>
         </View>
         <CustomButton

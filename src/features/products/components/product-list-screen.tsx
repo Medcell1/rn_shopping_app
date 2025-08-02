@@ -9,10 +9,10 @@ import { SkeletonLoader } from '@/src/shared/components/skeleton-loader';
 import { useProducts } from '../hooks/use-product';
 import { AddProductForm } from './add-product-form';
 import { ProductCard } from './product-card';
-import { Product } from '@/src/shared/types';
+import type { Product } from '@/src/shared/types';
 
 export default function ProductListScreen() {
-  const { addItem } = useCartStore();
+  const { addItem } = useCartStore((state) => ({ addItem: state.addItem }));
   const [showAddModal, setShowAddModal] = useState(false);
   const { data: products = [], isLoading, error, refetch } = useProducts();
 
@@ -22,7 +22,7 @@ export default function ProductListScreen() {
   );
 
   if (isLoading) return <SkeletonLoader />;
-  if (error) return <ErrorMessage message={error.message} onRetry={() => refetch()} />;
+  if (error) return <ErrorMessage message={error.message} onRetry={refetch} />;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -32,7 +32,6 @@ export default function ProductListScreen() {
           onPress={() => setShowAddModal(true)}
           className="bg-success rounded-full p-3"
           accessibilityLabel="Add new product"
-          accessibilityRole="button"
         >
           <Ionicons name="add" size={22} color="white" />
         </TouchableOpacity>
@@ -60,7 +59,7 @@ export default function ProductListScreen() {
           removeClippedSubviews
           maxToRenderPerBatch={10}
           initialNumToRender={8}
-          windowSize={5} 
+          windowSize={5}
         />
       )}
       <AddProductForm visible={showAddModal} onClose={() => setShowAddModal(false)} />

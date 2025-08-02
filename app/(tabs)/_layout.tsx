@@ -9,8 +9,8 @@ import { useAuthStore } from '@/src/shared/store/auth-store';
 export default function TabLayout() {
   const { getItemCount } = useCartStore();
   const router = useRouter();
-  const { setSession } = useAuthStore();
-
+  const { setSession } = useAuthStore(); 
+  const {clearCart} = useCartStore()
   const handleSignOut = async () => {
     console.log('Starting sign-out process');
     try {
@@ -25,6 +25,7 @@ export default function TabLayout() {
       const { data: { session } } = await supabase.auth.getSession();
 
       setSession(null);
+      clearCart();
       router.replace('/(auth)');
     } catch (error) {
       console.error('Sign-out process error:', error);

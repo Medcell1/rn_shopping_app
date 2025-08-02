@@ -1,32 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../../../shared/utils/supabase';
-import type { Order } from '../types/order';
-import { useState, useEffect } from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../../../shared/utils/supabase";
+import type { Order } from "../types/order";
 
 export const useOrders = (page = 1, pageSize = 10) => {
-  const [initialData, setInitialData] = useState<Order[] | undefined>(undefined);
-
-  useEffect(() => {
-    AsyncStorage.getItem('orders').then((cached) => {
-      if (cached) {
-        setInitialData(JSON.parse(cached));
-      }
-    });
-  }, []);
-
   return useQuery<Order[]>({
-    queryKey: ['orders', page],
+    queryKey: ["orders", page, pageSize],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
       if (error) throw error;
-      await AsyncStorage.setItem('orders', JSON.stringify(data));
-      return data;
+      return data ?? [];
     },
-    initialData,  // <-- sync value or undefined
   });
 };
